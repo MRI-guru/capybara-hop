@@ -1,7 +1,7 @@
 # Capybara Hop! iOS/TestFlight workflow for Codemagic.
 #
 # Configure these two items in Codemagic before starting a build:
-#   1. An App Store Connect integration named `capybara_appstore`.
+#   1. An App Store Connect integration named `capybara_codemagic`.
 #   2. An environment-variable group named `capybara_public` containing
 #      EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
 # Keep Apple private keys and Supabase values out of this repository.
