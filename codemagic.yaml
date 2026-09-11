@@ -23,8 +23,6 @@ workflows:
         - capybara_public
       vars:
         BUNDLE_ID: com.dominickballas.capybarahop
-        XCODE_WORKSPACE: capybara-hop-new-graphics-v3.xcworkspace
-        XCODE_SCHEME: capybara-hop-new-graphics-v3
 
     scripts:
       - name: Install npm dependencies
@@ -41,8 +39,17 @@ workflows:
 
       - name: Build signed IPA
         script: |
+          XCODE_WORKSPACE=$(find "$CM_BUILD_DIR/ios" -maxdepth 1 -name "*.xcworkspace" -print -quit)
+          if [ -z "$XCODE_WORKSPACE" ]; then
+            echo "No generated Xcode workspace found"
+            find "$CM_BUILD_DIR/ios" -maxdepth 2 -type f | sort
+            exit 1
+          fi
+          XCODE_SCHEME=$(basename "$XCODE_WORKSPACE" .xcworkspace)
+          echo "Building workspace: $XCODE_WORKSPACE"
+          echo "Building scheme: $XCODE_SCHEME"
           xcode-project build-ipa \
-            --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" \
+            --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
 
     artifacts:
