@@ -1,0 +1,57 @@
+# Capybara Hop! iOS/TestFlight workflow for Codemagic.
+#
+# Configure these two items in Codemagic before starting a build:
+#   1. An App Store Connect integration named `capybara_appstore`.
+#   2. An environment-variable group named `capybara_public` containing
+#      EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
+# Keep Apple private keys and Supabase values out of this repository.
+
+workflows:
+  capybara-hop-ios:
+    name: Capybara Hop! iOS TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: capybara_appstore
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.dominickballas.capybarahop
+      groups:
+        - capybara_public
+      vars:
+        BUNDLE_ID: com.dominickballas.capybarahop
+        XCODE_WORKSPACE: capybara-hop-new-graphics-v3.xcworkspace
+        XCODE_SCHEME: capybara-hop-new-graphics-v3
+
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+
+      - name: Generate native iOS project
+        script: npx expo prebuild --platform ios --non-interactive
+
+      - name: Install CocoaPods dependencies
+        script: cd ios && pod install
+
+      - name: Set up iOS code signing
+        script: xcode-project use-profiles
+
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
