@@ -13,7 +13,7 @@ workflows:
     instance_type: mac_mini_m2
 
     integrations:
-      app_store_connect: capybara_appstore
+      app_store_connect: capybara_codemagic
 
     environment:
       ios_signing:
