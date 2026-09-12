@@ -5,6 +5,9 @@
 #   2. An environment-variable group named `capybara_public` containing
 #      EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
 # Keep Apple private keys and Supabase values out of this repository.
+#
+# RevenueCat's iOS SDK key is intentionally included as a public app key.
+# It is safe to ship in the client bundle and is used by the native monetization service.
 
 workflows:
   capybara-hop-ios:
@@ -23,6 +26,7 @@ workflows:
         - capybara_public
       vars:
         BUNDLE_ID: com.dominickballas.capybarahop
+        EXPO_PUBLIC_REVENUECAT_IOS_KEY: appl_CFxfaDXWrToxVaSXNdYfhAAtpFd
 
     scripts:
       - name: Install npm dependencies
