@@ -26,6 +26,8 @@ workflows:
         - capybara_public
       vars:
         BUNDLE_ID: com.dominickballas.capybarahop
+        ADMOB_IOS_APP_ID: ca-app-pub-8380590454775894~2767996031
+        EXPO_PUBLIC_ADMOB_REWARDED_ID: ca-app-pub-8380590454775894/8750592630
         EXPO_PUBLIC_REVENUECAT_IOS_KEY: appl_CFxfaDXWrToxVaSXNdYfhAAtpFd
 
     scripts:
