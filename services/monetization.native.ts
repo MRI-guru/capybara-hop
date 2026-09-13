@@ -70,9 +70,9 @@ export async function restorePurchases() {
 export async function showRewardedAd() {
   if (!adsReady) return { earned: false as const, reason: isExpoGo ? 'expo_go' as const : 'not_configured' as const };
   const ads = require('react-native-google-mobile-ads');
-  const unitId = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID || ads.TestIds.REWARDED;
-  const rewarded = ads.RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
-  return new Promise<{ earned: boolean; reason?: string }>(resolve => {
+  const productionUnitId = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID;
+  const loadRewarded = (unitId: string) => new Promise<{ earned: boolean; reason?: string }>(resolve => {
+    const rewarded = ads.RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
     let earned = false;
     let settled = false;
     let subscriptions: Array<() => void> = [];
@@ -90,4 +90,9 @@ export async function showRewardedAd() {
     ];
     rewarded.load();
   });
+  const result = await loadRewarded(productionUnitId || ads.TestIds.REWARDED);
+  if (result.earned || !productionUnitId) return result;
+  // New or TestFlight apps can have no production fill before AdMob approves the app.
+  // Fall back to Google's test unit so rewarded-ad flows remain testable.
+  return loadRewarded(ads.TestIds.REWARDED);
 }
