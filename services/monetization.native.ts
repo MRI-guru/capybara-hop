@@ -16,25 +16,46 @@ const revenueCatKey = process.env.EXPO_OS === 'ios'
 
 let purchasesReady = false;
 let adsReady = false;
+let adInitializationPromise: Promise<boolean> | null = null;
+
+async function initializeAds() {
+  if (adsReady) return true;
+  if (!adInitializationPromise) {
+    adInitializationPromise = (async () => {
+      try {
+        const ads = require('react-native-google-mobile-ads');
+        // Consent can be unavailable during TestFlight testing or in some regions.
+        // That should not prevent non-personalized rewarded ads from initializing.
+        try {
+          await ads.AdsConsent.gatherConsent();
+        } catch {
+          // Continue with non-personalized ad requests below.
+        }
+        await ads.default().initialize();
+        adsReady = true;
+        return true;
+      } catch {
+        adInitializationPromise = null;
+        return false;
+      }
+    })();
+  }
+  return adInitializationPromise;
+}
 
 export async function initializeMonetization() {
   if (isExpoGo) return { native: false as const, reason: 'expo_go' as const };
-  try {
-    if (revenueCatKey && !purchasesReady) {
+  if (revenueCatKey && !purchasesReady) {
+    try {
       const Purchases = require('react-native-purchases').default;
       Purchases.configure({ apiKey: revenueCatKey });
       purchasesReady = true;
+    } catch {
+      purchasesReady = false;
     }
-    if (!adsReady) {
-      const ads = require('react-native-google-mobile-ads');
-      await ads.AdsConsent.gatherConsent();
-      await ads.default().initialize();
-      adsReady = true;
-    }
-    return { native: true as const, purchasesReady, adsReady };
-  } catch {
-    return { native: false as const, reason: 'native_unavailable' as const };
   }
+  await initializeAds();
+  return { native: true as const, purchasesReady, adsReady };
 }
 
 export async function purchaseProduct(productId: PurchaseProductId) {
@@ -68,17 +89,22 @@ export async function restorePurchases() {
 }
 
 export async function showRewardedAd() {
-  if (!adsReady) return { earned: false as const, reason: isExpoGo ? 'expo_go' as const : 'not_configured' as const };
+  if (isExpoGo) return { earned: false as const, reason: 'expo_go' as const };
+  if (!adsReady && !(await initializeAds())) {
+    return { earned: false as const, reason: 'not_configured' as const };
+  }
   const ads = require('react-native-google-mobile-ads');
   const productionUnitId = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID;
-  const loadRewarded = (unitId: string) => new Promise<{ earned: boolean; reason?: string }>(resolve => {
+  const loadRewarded = (unitId: string, timeoutMs: number) => new Promise<{ earned: boolean; reason?: string }>(resolve => {
     const rewarded = ads.RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
     let earned = false;
     let settled = false;
     let subscriptions: Array<() => void> = [];
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const finish = (result: { earned: boolean; reason?: string }) => {
       if (settled) return;
       settled = true;
+      if (timeout) clearTimeout(timeout);
       subscriptions.forEach(unsubscribe => unsubscribe());
       resolve(result);
     };
@@ -88,11 +114,12 @@ export async function showRewardedAd() {
       rewarded.addAdEventListener(ads.AdEventType.CLOSED, () => finish({ earned })),
       rewarded.addAdEventListener(ads.AdEventType.ERROR, () => finish({ earned: false, reason: 'ad_failed' })),
     ];
+    timeout = setTimeout(() => finish({ earned: false, reason: 'ad_load_timeout' }), timeoutMs);
     rewarded.load();
   });
-  const result = await loadRewarded(productionUnitId || ads.TestIds.REWARDED);
+  const result = await loadRewarded(productionUnitId || ads.TestIds.REWARDED, 12000);
   if (result.earned || !productionUnitId) return result;
   // New or TestFlight apps can have no production fill before AdMob approves the app.
   // Fall back to Google's test unit so rewarded-ad flows remain testable.
-  return loadRewarded(ads.TestIds.REWARDED);
+  return loadRewarded(ads.TestIds.REWARDED, 15000);
 }
