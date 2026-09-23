@@ -7,6 +7,10 @@ node_modules/
 .expo/
 dist/
 dist-ios/
+dist-ios-worlds/
+dist-v311-ios/
+dist-v311-web/
+dist-worlds/
 web-build/
 expo-env.d.ts
 
@@ -43,3 +47,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Supabase CLI local state
+/supabase/.temp/

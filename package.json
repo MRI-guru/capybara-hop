@@ -1,6 +1,6 @@
 {
   "name": "capybara-hop",
-  "version": "3.19.0",
+  "version": "3.19.1",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",

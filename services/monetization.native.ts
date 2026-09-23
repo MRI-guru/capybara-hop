@@ -95,6 +95,7 @@ export async function showRewardedAd() {
   }
   const ads = require('react-native-google-mobile-ads');
   const productionUnitId = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID;
+  const useTestAds = __DEV__ || process.env.EXPO_PUBLIC_ADMOB_USE_TEST_ADS === 'true';
   const loadRewarded = (unitId: string, timeoutMs: number) => new Promise<{ earned: boolean; reason?: string }>(resolve => {
     const rewarded = ads.RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
     let earned = false;
@@ -117,9 +118,8 @@ export async function showRewardedAd() {
     timeout = setTimeout(() => finish({ earned: false, reason: 'ad_load_timeout' }), timeoutMs);
     rewarded.load();
   });
-  const result = await loadRewarded(productionUnitId || ads.TestIds.REWARDED, 12000);
-  if (result.earned || !productionUnitId) return result;
-  // New or TestFlight apps can have no production fill before AdMob approves the app.
-  // Fall back to Google's test unit so rewarded-ad flows remain testable.
-  return loadRewarded(ads.TestIds.REWARDED, 15000);
+  if (!useTestAds && !productionUnitId) {
+    return { earned: false as const, reason: 'not_configured' as const };
+  }
+  return loadRewarded(useTestAds ? ads.TestIds.REWARDED : productionUnitId!, 15000);
 }
