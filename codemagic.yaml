@@ -33,7 +33,11 @@ workflows:
 
     scripts:
       - name: Install npm dependencies
-        script: npm ci
+        # Codemagic's current npm image rejects this lockfile with `npm ci`
+        # even though the same lockfile installs cleanly locally. `npm install`
+        # still honors package-lock.json while remaining compatible with the
+        # builder image.
+        script: npm install --no-audit --no-fund
 
       - name: Generate native iOS project
         script: npx expo prebuild --platform ios --non-interactive
