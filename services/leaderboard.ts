@@ -40,3 +40,25 @@ export async function submitRun(input: { score: number; mode: LeaderboardMode; d
   if (error) throw error;
   return true;
 }
+
+export type LeaderboardRewardClaim = {
+  claimed: boolean;
+  reward: number;
+  rank: number | null;
+  periodKey: string;
+  reason?: 'already_claimed' | 'not_eligible';
+};
+
+export async function claimPreviousLeaderboardReward(): Promise<LeaderboardRewardClaim> {
+  if (!supabase) return { claimed: false, reward: 0, rank: null, periodKey: '', reason: 'not_eligible' };
+  const { data, error } = await supabase.rpc('claim_previous_leaderboard_reward');
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  return {
+    claimed: Boolean(result.claimed),
+    reward: Number(result.reward ?? 0),
+    rank: result.rank == null ? null : Number(result.rank),
+    periodKey: String(result.period_key ?? ''),
+    reason: result.reason as LeaderboardRewardClaim['reason'],
+  };
+}

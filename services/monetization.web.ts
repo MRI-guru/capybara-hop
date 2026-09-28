@@ -2,6 +2,7 @@ export type PurchaseProductId =
   | 'capy_booster_pack_3'
   | 'capy_triple_pack_3'
   | 'capy_unlock_all_outfits'
+  | 'capy_remove_ads'
   | 'capy_acorns_250'
   | 'capy_acorns_1500'
   | 'capy_acorns_4000'
@@ -21,4 +22,12 @@ export async function restorePurchases(): Promise<{ restored: boolean; activePro
 
 export async function showRewardedAd(): Promise<{ earned: boolean; reason?: string }> {
   return { earned: false as const, reason: 'web_preview' as const };
+}
+
+export async function preloadInterstitialAd() {
+  return false;
+}
+
+export async function showInterstitialAd(): Promise<{ shown: boolean; reason?: string }> {
+  return { shown: false as const, reason: 'web_preview' as const };
 }

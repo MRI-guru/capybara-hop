@@ -2,7 +2,7 @@
   "expo": {
     "name": "Capybara Hop!",
     "slug": "capybara-hop-new-graphics-v3",
-    "version": "3.19.1",
+    "version": "3.20.0",
     "scheme": "capybarahopv3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dominickballas.capybarahop",
-      "buildNumber": "28",
+      "buildNumber": "29",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.dominickballas.capybarahop",
-      "versionCode": 26
+      "versionCode": 27
     },
     "web": {
       "favicon": "./assets/favicon.png"

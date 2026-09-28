@@ -12,6 +12,8 @@ export type CloudSave = {
   worldBests: Record<string, number>;
   settings: Record<string, boolean>;
   progress: Record<string, unknown>;
+  adsRemoved: boolean;
+  lastInterstitialRun: number;
 };
 
 export async function uploadCloudSave(save: CloudSave) {
@@ -24,7 +26,6 @@ export async function uploadCloudSave(save: CloudSave) {
     acorns: save.acorns,
     selected_outfit: save.selected,
     owned_outfits: save.owned,
-    display_name: save.displayName,
     shield_boosters: save.boosters.shield ?? 0,
     slow_boosters: save.boosters.slow ?? 0,
     continue_boosters: save.boosters.continue ?? 0,
@@ -34,6 +35,8 @@ export async function uploadCloudSave(save: CloudSave) {
     world_bests: save.worldBests,
     settings: save.settings,
     progress: save.progress,
+    ads_removed: save.adsRemoved,
+    last_interstitial_run: save.lastInterstitialRun,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
@@ -44,7 +47,7 @@ export async function downloadCloudSave(): Promise<CloudSave | null> {
   if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data, error } = await supabase.from('game_saves').select('best_score, acorns, selected_outfit, owned_outfits, display_name, shield_boosters, slow_boosters, continue_boosters, triple_boosters, rewarded_ads, selected_world, world_bests, settings, progress').eq('user_id', user.id).maybeSingle();
+  const { data, error } = await supabase.from('game_saves').select('best_score, acorns, selected_outfit, owned_outfits, display_name, shield_boosters, slow_boosters, continue_boosters, triple_boosters, rewarded_ads, selected_world, world_bests, settings, progress, ads_removed, last_interstitial_run').eq('user_id', user.id).maybeSingle();
   if (error) throw error;
   return data ? {
     bestScore: data.best_score,
@@ -58,5 +61,7 @@ export async function downloadCloudSave(): Promise<CloudSave | null> {
     worldBests: data.world_bests,
     settings: data.settings,
     progress: data.progress,
+    adsRemoved: data.ads_removed ?? false,
+    lastInterstitialRun: data.last_interstitial_run ?? 0,
   } : null;
 }

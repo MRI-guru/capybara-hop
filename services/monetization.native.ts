@@ -4,6 +4,7 @@ export type PurchaseProductId =
   | 'capy_booster_pack_3'
   | 'capy_triple_pack_3'
   | 'capy_unlock_all_outfits'
+  | 'capy_remove_ads'
   | 'capy_acorns_250'
   | 'capy_acorns_1500'
   | 'capy_acorns_4000'
@@ -17,6 +18,9 @@ const revenueCatKey = process.env.EXPO_OS === 'ios'
 let purchasesReady = false;
 let adsReady = false;
 let adInitializationPromise: Promise<boolean> | null = null;
+let interstitialAd: any | null = null;
+let interstitialReady = false;
+let interstitialLoadPromise: Promise<boolean> | null = null;
 
 async function initializeAds() {
   if (adsReady) return true;
@@ -78,10 +82,14 @@ export async function restorePurchases() {
   try {
     const Purchases = require('react-native-purchases').default;
     const customerInfo = await Purchases.restorePurchases();
-    const active = Object.values(customerInfo.entitlements.active ?? {})
+    const entitlements = Object.values(customerInfo.entitlements.active ?? {})
       .map((item: any) => item.productIdentifier)
       .filter(Boolean);
-    const hasPurchaseHistory = active.length > 0 || (customerInfo.nonSubscriptionTransactions ?? []).length > 0;
+    const nonSubscriptions = (customerInfo.nonSubscriptionTransactions ?? [])
+      .map((item: any) => item.productIdentifier)
+      .filter(Boolean);
+    const active = [...new Set([...entitlements, ...nonSubscriptions])];
+    const hasPurchaseHistory = active.length > 0;
     return { restored: true as const, activeProductIds: active as string[], hasPurchaseHistory };
   } catch {
     return { restored: false as const, activeProductIds: [] as string[] };
@@ -122,4 +130,63 @@ export async function showRewardedAd() {
     return { earned: false as const, reason: 'not_configured' as const };
   }
   return loadRewarded(useTestAds ? ads.TestIds.REWARDED : productionUnitId!, 15000);
+}
+
+export async function preloadInterstitialAd() {
+  if (isExpoGo) return false;
+  if (!adsReady && !(await initializeAds())) return false;
+  if (interstitialReady && interstitialAd) return true;
+  if (interstitialLoadPromise) return interstitialLoadPromise;
+  const ads = require('react-native-google-mobile-ads');
+  const productionUnitId = process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_ID;
+  const useTestAds = __DEV__ || process.env.EXPO_PUBLIC_ADMOB_USE_TEST_ADS === 'true';
+  if (!useTestAds && !productionUnitId) return false;
+  const unitId = useTestAds ? ads.TestIds.INTERSTITIAL : productionUnitId;
+  interstitialLoadPromise = new Promise<boolean>(resolve => {
+    const ad = ads.InterstitialAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
+    const timeout = setTimeout(() => finish(false), 15000);
+    let subscriptions: Array<() => void> = [];
+    const finish = (loaded: boolean) => {
+      clearTimeout(timeout);
+      subscriptions.forEach(unsubscribe => unsubscribe());
+      interstitialLoadPromise = null;
+      interstitialReady = loaded;
+      interstitialAd = loaded ? ad : null;
+      resolve(loaded);
+    };
+    subscriptions = [
+      ad.addAdEventListener(ads.AdEventType.LOADED, () => finish(true)),
+      ad.addAdEventListener(ads.AdEventType.ERROR, () => finish(false)),
+    ];
+    ad.load();
+  });
+  return interstitialLoadPromise;
+}
+
+export async function showInterstitialAd() {
+  if (!interstitialReady || !interstitialAd) {
+    const loaded = await preloadInterstitialAd();
+    if (!loaded) return { shown: false as const, reason: isExpoGo ? 'expo_go' as const : 'ad_failed' as const };
+  }
+  const ads = require('react-native-google-mobile-ads');
+  const ad = interstitialAd;
+  interstitialAd = null;
+  interstitialReady = false;
+  return new Promise<{ shown: boolean; reason?: string }>(resolve => {
+    let settled = false;
+    let subscriptions: Array<() => void> = [];
+    const timeout = setTimeout(() => finish({ shown: false, reason: 'ad_timeout' }), 20000);
+    const finish = (result: { shown: boolean; reason?: string }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      subscriptions.forEach(unsubscribe => unsubscribe());
+      resolve(result);
+    };
+    subscriptions = [
+      ad.addAdEventListener(ads.AdEventType.CLOSED, () => finish({ shown: true })),
+      ad.addAdEventListener(ads.AdEventType.ERROR, () => finish({ shown: false, reason: 'ad_failed' })),
+    ];
+    Promise.resolve(ad.show()).catch(() => finish({ shown: false, reason: 'ad_failed' }));
+  });
 }
